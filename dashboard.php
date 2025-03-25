@@ -1,49 +1,61 @@
 <?php
 session_start();
-require 'db.php';
+require 'vendor/autoload.php';
+require 'config.php';
 
-if (!isset($_SESSION['user_id'])) {
-    header("Location: login.php");
-    exit;
+if (!isset($_SESSION['user'])) {
+    header('Location: index.php');
+    exit();
 }
 
-$user_id = $_SESSION['user_id'];
+$userId = new MongoDB\BSON\ObjectID($_SESSION['user']);
 
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $task = $_POST['task'];
+// Add a new task
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['add_task'])) {
+    $task = trim($_POST['task']);
+    if ($task !== '') {
+        $tasksCollection->insertOne([
+            'user_id' => $userId,
+            'task'    => $task,
+            'completed' => false
+        ]);
+    }
+}
 
-    // Insert task into MongoDB
-    $tasksCollection->insertOne([
-        'user_id' => new MongoDB\BSON\ObjectId($user_id),
-        'task' => $task,
-        'completed' => false
+// Delete a task
+if (isset($_GET['delete'])) {
+    $taskId = $_GET['delete'];
+    $tasksCollection->deleteOne([
+        '_id' => new MongoDB\BSON\ObjectID($taskId),
+        'user_id' => $userId
     ]);
 }
 
-$tasks = $tasksCollection->find(['user_id' => new MongoDB\BSON\ObjectId($user_id)]);
+// Retrieve user tasks
+$tasks = $tasksCollection->find(['user_id' => $userId]);
 ?>
-
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard</title>
+  <title>To-Do List Dashboard</title>
 </head>
 <body>
-    <h2>Welcome, <?php echo $_SESSION['username']; ?>!</h2>
-    <a href="logout.php">Logout</a>
+  <h2>Your To-Do List</h2>
 
-    <h3>Tasks</h3>
-    <form method="POST" action="">
-        <input type="text" name="task" placeholder="Enter task" required><br>
-        <button type="submit">Add Task</button>
-    </form>
+  <form method="post">
+    <input type="text" name="task" required placeholder="New task">
+    <button type="submit" name="add_task">Add Task</button>
+  </form>
 
-    <ul>
-        <?php foreach ($tasks as $task): ?>
-            <li><?php echo $task['task']; ?></li>
-        <?php endforeach; ?>
-    </ul>
+  <ul>
+    <?php foreach ($tasks as $task): ?>
+      <li>
+        <?php echo htmlspecialchars($task['task']); ?>
+        <a href="dashboard.php?delete=<?php echo $task['_id']; ?>">Delete</a>
+      </li>
+    <?php endforeach; ?>
+  </ul>
+
+  <p><a href="logout.php">Logout</a></p>
 </body>
 </html>

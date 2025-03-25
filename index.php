@@ -1,24 +1,59 @@
 <?php
 session_start();
+require 'vendor/autoload.php';
+require 'config.php';
 
-// Check if the user is logged in
-if (isset($_SESSION['user_id'])) {
-    // Redirect to dashboard if already logged in
-    header("Location: dashboard.php");
-    exit;
+$message = '';
+
+// Handle user signup
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['signup'])) {
+    $email = $_POST['email'];
+    $password = password_hash($_POST['password'], PASSWORD_BCRYPT);
+    $existingUser = $usersCollection->findOne(['email' => $email]);
+    if (!$existingUser) {
+        $usersCollection->insertOne(['email' => $email, 'password' => $password]);
+        $message = 'Signup successful! Please login.';
+    } else {
+        $message = 'User already exists!';
+    }
+}
+
+// Handle user login
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['login'])) {
+    $email = $_POST['email'];
+    $password = $_POST['password'];
+    $user = $usersCollection->findOne(['email' => $email]);
+    if ($user && password_verify($password, $user['password'])) {
+        $_SESSION['user'] = (string)$user['_id'];
+        header("Location: dashboard.php");
+        exit();
+    } else {
+        $message = 'Invalid credentials!';
+    }
 }
 ?>
-
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Welcome to the To-Do List App</title>
+  <title>To-Do List - Login/Signup</title>
 </head>
 <body>
-    <h2>Welcome to the To-Do List Application</h2>
-    <p>If you don't have an account, please <a href="signup.php">sign up</a>.</p>
-    <p>If you already have an account, please <a href="login.php">login</a>.</p>
+  <?php if ($message): ?>
+    <p><?php echo htmlspecialchars($message); ?></p>
+  <?php endif; ?>
+
+  <h2>Signup</h2>
+  <form method="post">
+    <input type="email" name="email" required placeholder="Email">
+    <input type="password" name="password" required placeholder="Password">
+    <button type="submit" name="signup">Sign Up</button>
+  </form>
+
+  <h2>Login</h2>
+  <form method="post">
+    <input type="email" name="email" required placeholder="Email">
+    <input type="password" name="password" required placeholder="Password">
+    <button type="submit" name="login">Login</button>
+  </form>
 </body>
 </html>
