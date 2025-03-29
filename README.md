@@ -31,4 +31,4 @@ yourapp/
 1. **Clone the repository:**
    ```bash
    git clone https://github.com/afnanahmadtariq/To-Do.git
-   cd yourapp
+   cd To-Do
